@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Pong2d</string>
+    <string name="vs_ai">Vs AI</string>
+
+    <string name="title_activity_pong">PongActivity</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="opponent">Opponent</string>
+    <string name="player">Player</string>
+    <string name="state">Ready</string>
+    <string name="mode_win">You Won Yay!</string>
+    <string name="mode_lose">You Lost</string>
+    <string name="mode_pause">Paused</string>
+    <string name="setting_sensors">Use sensors to Play</string>
+    <string name="setting_drag">Drag racquet to Play</string>
+    <string name="pref_file">pong2d_pref_file</string>
+</resources>
