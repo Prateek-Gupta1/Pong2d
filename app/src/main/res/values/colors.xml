@@ -5,4 +5,7 @@
     <color name="colorAccent">#FF4081</color>
 
     <color name="black_overlay">#66000000</color>
+    <color name="table_color">#FBC02D</color>
+    <color name="player_color">#33691E</color>
+    <color name="opponent_color">#B71C1C</color>
 </resources>

@@ -62,6 +62,8 @@ public class GameThread extends Thread {
     private int mGameMode;
 
     public GameThread(Context ctx, SurfaceHolder holder, PongTable pongTable, Handler statushandler, Handler scoreHandler) {
+        Log.e(TAG, "GameThread Constructor called");
+
         this.mCtx = ctx;
         this.mSurfaceHolder = holder;
         this.mPongTable = pongTable;
@@ -73,6 +75,8 @@ public class GameThread extends Thread {
 
     @Override
     public void run() {
+        Log.e(TAG, "run method called");
+
         long mNextGameTick = SystemClock.uptimeMillis();
         int skipTicks = 1000 / PHYS_FPS;
         while (mRun) {
@@ -84,12 +88,12 @@ public class GameThread extends Thread {
                         if (mGameState == STATE_RUNNING) {
                             if (mGameMode == GAME_MODE_MULTIPLAYER) {
                                 if (mPongTable.ismPlayerHosting()) {
-                                    readFromOpponent();
                                     writeToOpponent();
+                                    readFromOpponent();
                                     mPongTable.update(c);
                                 } else {
-                                    writeToOpponent();
                                     readFromOpponent();
+                                    writeToOpponent();
                                 }
                             }else{
                                 mPongTable.update(c);
@@ -126,7 +130,6 @@ public class GameThread extends Thread {
     public void setUpNewRound() {
         synchronized (mSurfaceHolder){
             mPongTable.setupTable();
-
             if(mSensorsOn) mSensorListener.registerListener(mPongTable);
         }
     }
@@ -285,16 +288,13 @@ public class GameThread extends Thread {
 
     public synchronized void setGameMode(int mode){
         mGameMode = mode;
-        if(mGameMode == GAME_MODE_MULTIPLAYER){
-            try {
-                bleInStream = new ObjectInputStream(SocketUtil.getSocket().getInputStream());
-                bleOutStream = new ObjectOutputStream( SocketUtil.getSocket().getOutputStream());
-            } catch (IOException e) {
-                Log.e(TAG, e.getMessage());
-            }
-        }
+
     }
 
+    public synchronized void setStreams(ObjectOutputStream out, ObjectInputStream in){
+        bleInStream = in;
+        bleOutStream = out;
+    }
     public int getGameMode(){
         return mGameMode;
     }
@@ -304,9 +304,12 @@ public class GameThread extends Thread {
         if(obj instanceof GameStateObject){
             GameStateObject gameState = (GameStateObject) obj;
             if(mPongTable.ismPlayerHosting()){
-                mPongTable.getOpponent().bounds.top = gameState.playerRacquetTop;
+                mPongTable.movePlayer(mPongTable.getOpponent(), mPongTable.getOpponent().bounds.left,gameState.playerRacquetTop);
+                //mPongTable.getOpponent().bounds.top = gameState.playerRacquetTop;
             }else {
-                mPongTable.getOpponent().bounds.top = gameState.playerRacquetTop;
+                //mPongTable.getOpponent().bounds.top = gameState.playerRacquetTop;
+                //setState(gameState.gameState);
+                mPongTable.movePlayer(mPongTable.getOpponent(), mPongTable.getOpponent().bounds.left,gameState.playerRacquetTop);
                 mPongTable.getBall().cx = mPongTable.getmTableWidth() - gameState.ballCx;
                 mPongTable.getBall().cy = gameState.ballCy;
                 mPongTable.getBall().velocity_x = -gameState.ballVx;
@@ -315,6 +318,10 @@ public class GameThread extends Thread {
                 mPongTable.getOpponent().score = gameState.playerScore;
             }
         }
+        Log.e(TAG, "Tablewidth = " + mPongTable.getmTableWidth());
+        Log.e(TAG, "TableHeight = " + mPongTable.getmTableHeight());
+        Log.e(TAG, " Read Player = " + mPongTable.getPlayer().toString());
+        Log.e(TAG, " REad Opponent = " + mPongTable.getOpponent().toString());
     }
     private synchronized void writeToOpponent() throws IOException {
         GameStateObject gameState = new GameStateObject();
@@ -325,7 +332,11 @@ public class GameThread extends Thread {
         gameState.playerRacquetTop = mPongTable.getPlayer().bounds.top;
         gameState.opponentScore = mPongTable.getOpponent().score;
         gameState.playerScore = mPongTable.getPlayer().score;
+        //gameState.gameState = mGameState;
         bleOutStream.writeObject(gameState);
+        Log.e(TAG, " Write Player = " + mPongTable.getPlayer().toString());
+        Log.e(TAG, " Write Opponent = " + mPongTable.getOpponent().toString());
+        Log.e(TAG, "Ball = " + mPongTable.getBall().toString());
     }
 
 }

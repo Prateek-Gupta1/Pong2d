@@ -9,12 +9,13 @@ import java.io.Serializable;
 public class GameStateObject implements Serializable {
 
     public float playerRacquetTop;
-    public float opponentRacquetTop;
+    public float opponentRacquetLeft;
     public int playerScore;
     public int opponentScore;
     public float ballCx;
     public float ballCy;
     public float ballVx;
     public float ballVy;
+    public int gameState;
 
 }

@@ -8,6 +8,7 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 import game.prateek.pong2d.MultiplayerActivity;
 
@@ -37,15 +38,20 @@ public class ConnectService extends Thread {
 
         try {
             mSocket.connect();
+            Log.e(TAG, "Connected");
         } catch (IOException e) {
             Log.e(TAG, e.getMessage());
             try {
-                mSocket.close();
-            } catch (IOException e1) {
+                mSocket =(BluetoothSocket) mDevice.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(mDevice,1);
+                mSocket.connect();
+                //mSocket.close();
+            } catch (Exception e1) {
                 Log.e(TAG, e.getMessage());
+                mListener.connectionFailed();
             }
-            mListener.connectionFailed();
+
         }
+
         mListener.connected(false,mSocket);
     }
 

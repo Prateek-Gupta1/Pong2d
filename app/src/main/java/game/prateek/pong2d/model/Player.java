@@ -36,7 +36,20 @@ public class Player {
         return racquetHeight;
     }
 
+    public void setRacquetWidth(int racquetWidth) {
+        this.racquetWidth = racquetWidth;
+    }
+
+    public void setRacquetHeight(int racquetHeight) {
+        this.racquetHeight = racquetHeight;
+    }
+
     public Paint getPaint() {
         return paint;
+    }
+
+    @Override
+    public String toString() {
+        return "Width = " + racquetWidth + " Height = " + racquetHeight + " score = " + score + " Top = " + bounds.top + " Left = " + bounds.left;
     }
 }

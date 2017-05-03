@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:background="@android:color/holo_blue_dark"
+    android:background="@color/table_color"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
 
@@ -19,7 +19,7 @@
         android:layout_toStartOf="@+id/tvVsPlayer"
         android:gravity="center"
         android:text="@string/vs_ai"
-        android:textColor="#FFFFFF"
+        android:textColor="#000000"
         android:textSize="36sp"
         android:textStyle="bold"
         tools:layout_editor_absoluteX="178dp"
@@ -45,7 +45,7 @@
         android:layout_toLeftOf="@+id/ivSettings"
         android:layout_toStartOf="@+id/ivSettings"
         android:text="Vs Player"
-        android:textColor="#FFFFFF"
+        android:textColor="#000000"
         android:textSize="36sp"
         android:textStyle="bold" />
 

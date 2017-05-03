@@ -8,7 +8,7 @@
     <string name="opponent">Opponent</string>
     <string name="player">Player</string>
     <string name="state">Ready</string>
-    <string name="mode_win">You Won Yay!</string>
+    <string name="mode_win">You Won</string>
     <string name="mode_lose">You Lost</string>
     <string name="mode_pause">Paused</string>
     <string name="setting_sensors">Use sensors to Play</string>

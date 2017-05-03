@@ -48,4 +48,13 @@ public class Ball {
     public Paint getPaint() {
         return paint;
     }
+
+    public void setRadius(int radius) {
+        this.radius = radius;
+    }
+
+    @Override
+    public String toString() {
+        return "Cx = " + cx + " Cy=" + cy + " velX= " + velocity_x + " vely = " + velocity_y;
+    }
 }

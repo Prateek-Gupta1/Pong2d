@@ -1,5 +1,6 @@
 package game.prateek.pong2d;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -12,6 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Parcelable;
 import android.support.annotation.IdRes;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -38,7 +40,7 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
 
     private static final int REQUEST_ENABLE_BT = 0;
     private static final int ENSURE_ENABLE_DISCOVERABLE = 1;
-    public static final UUID APP_UUID = UUID.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
+    public static final UUID APP_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
 
 
     @Override
@@ -60,6 +62,10 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
                             if(mBluetoothAdapter.isDiscovering()){
                                 mBluetoothAdapter.cancelDiscovery();
                             }
+                            int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
+                            ActivityCompat.requestPermissions(MultiplayerActivity.this,
+                                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                                    MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
                             mBluetoothAdapter.startDiscovery();
                             IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                             registerReceiver(mDeviceListReceiver, filter);
@@ -102,18 +108,17 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
                 }
                 break;
             case ENSURE_ENABLE_DISCOVERABLE:
-               // Log.e("TAGGAGA",""+mBluetoothAdapter. );
-                //if(resultCode == Activity.RESULT_OK){
+                if(resultCode == Activity.RESULT_CANCELED){
+                    Toast.makeText(this, "Bluetooth must be made discoverable", Toast.LENGTH_LONG).show();
+                    finish();
+                }else{
                     mDialog = new ProgressDialog(this);
                     mDialog.setTitle("Waiting for someone to join");
                     mDialog.setCancelable(false);
-                    mDialog.show();
                     mAcceptConnService = new AcceptConnectionService("Pong2d",this);
                     mAcceptConnService.start();
-               // }else{
-                   // Toast.makeText(this, "Bluetooth must be made discoverable", Toast.LENGTH_LONG).show();
-                   // finish();
-               // }
+                    mDialog.show();
+                }
                 break;
         }
     }
@@ -134,7 +139,7 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                Log.e("Multiplayer",device.getName());
+               // Log.e("Multiplayer",device.getName());
                 mDeviceListAdapter.add(device.getName() + "\n" + device.getAddress());
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 if (mDeviceListAdapter.getCount() == 0) {
@@ -168,11 +173,14 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
                 }
                 MultiplayerActivity.this.unregisterReceiver(mDeviceListReceiver);
                 String info = mDeviceListAdapter.getItem(which);
-                String deviceName = info.substring(info.length()-17);
-                BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(deviceName);
-                //Todo start service to connect to a device.
-                mConnectService = new ConnectService("pong2d", device, MultiplayerActivity.this);
-                mConnectService.start();
+                String deviceName = null;
+                if(info != null && info.length() >= 17)
+                     deviceName = info.substring(info.length()-17);
+                if(deviceName != null) {
+                    BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(deviceName);
+                    mConnectService = new ConnectService("pong2d", device, MultiplayerActivity.this);
+                    mConnectService.start();
+                }
             }
         });
         devicesDialog.create().show();
@@ -189,7 +197,7 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
         }
         //Stop any service that is trying to connect to a device
         if(mConnectService != null){
-            mConnectService.cancel();
+            //mConnectService.cancel();
             mConnectService = null;
         }
 

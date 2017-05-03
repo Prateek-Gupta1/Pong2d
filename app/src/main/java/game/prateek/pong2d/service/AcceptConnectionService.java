@@ -21,6 +21,7 @@ public class AcceptConnectionService extends Thread {
     private String TAG = AcceptConnectionService.class.getSimpleName();
     private OnConnectionOverBluetoothListener mListener;
     private BluetoothServerSocket mServerSocket;
+    private boolean listening = true;
 
     public AcceptConnectionService(String name, OnConnectionOverBluetoothListener listener) {
         setName(name);
@@ -37,16 +38,20 @@ public class AcceptConnectionService extends Thread {
 
         BluetoothSocket socket = null;
 
-        while(true) {
+        while(listening) {
             try {
+                Log.e(TAG, "socket accepting ");
                 socket = mServerSocket.accept();
+                Log.e(TAG, "socket accepted");
                 if (socket != null) {
+                    Log.e(TAG, "socket not null");
                     mListener.connected(true, socket);
                 } else {
                     mListener.connectionFailed();
-                    break;
+                    //break;
                 }
             } catch (IOException e) {
+                Log.e(TAG, "socket error");
                 Log.e(TAG, e.getMessage());
             }
         }
@@ -55,6 +60,7 @@ public class AcceptConnectionService extends Thread {
     public void cancel() {
         if (mServerSocket != null) {
             try {
+                listening = false;
                 mServerSocket.close();
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());

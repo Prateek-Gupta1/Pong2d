@@ -31,10 +31,12 @@ public class PongActivity extends AppCompatActivity {
     public static final String GAME_MODE = "game_mode";
     boolean mPlayerHosting;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Log.e(TAG, "OnCreate Called");
         setContentView(R.layout.activity_pong);
 
         Intent intent = getIntent();
@@ -56,8 +58,10 @@ public class PongActivity extends AppCompatActivity {
         mGameThread.setGameMode(gameMode);
 
         if(savedInstanceState == null){
-            mGameThread.setState(GameThread.STATE_READY);
-        }else{
+            Log.e(TAG, "Setting new state");
+            if(gameMode != GameThread.GAME_MODE_MULTIPLAYER)
+                mGameThread.setState(GameThread.STATE_READY);
+        }else {
             mGameThread.restoreState(savedInstanceState);
         }
 
@@ -72,12 +76,13 @@ public class PongActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         mGameThread.pauseGame();
+        Log.e(TAG, "OnPause Called");
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
+        Log.e(TAG, "OnResume Called");
         if(mGameThread.getGameState() == GameThread.STATE_PAUSED){
             mGameThread.resumeGame();
             boolean toggleSensors = mSharedPref.getBoolean(SettingsActivity.KEY_SENSOR_SELECTED,false);
@@ -87,16 +92,22 @@ public class PongActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if(adapter.isEnabled()){
+            adapter.disable();
+        }
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+        Log.e(TAG, "OnSaveInstanceState Called");
         mGameThread.saveState(outState);
     }
 
     private class InitPongTableAsync extends AsyncTask<Void, Void, Void> {
-
-        public InitPongTableAsync(PongTable table) {
-            this.table = table;
-        }
 
         private ProgressDialog dialog;
         private BluetoothSocket socket;
@@ -104,56 +115,70 @@ public class PongActivity extends AppCompatActivity {
         private int windowPixelWidth;
         private int windowPixelHeight;
         private float windowDesity;
-        Integer width = new Integer(-1);
-        Integer height = new Integer(-1);
-        Float density = new Float(-1.0f);
+        Integer oppWidth = new Integer(-1);
+        Integer oppHeight = new Integer(-1);
+        Float oppDensity = new Float(-1.0f);
 
-        private int gameWidth;
-        private int gameHeight;
+        private int mGameWidth;
+        private int mGameHeight;
+
+        ObjectInputStream in = null;
+        ObjectOutputStream out = null;
+
+        public InitPongTableAsync(PongTable table) {
+            Log.e(TAG, "InitPongTableAsync constructor Called");
+            this.table = table;
+
+        }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+            Log.e(TAG, "OnPreExecute called");
             dialog = new ProgressDialog(PongActivity.this);
             dialog.setTitle("Setting up the Table");
             dialog.setCancelable(false);
-            dialog.show();
-            socket = SocketUtil.getSocket();
             DisplayMetrics metrics = new DisplayMetrics();
             getWindowManager().getDefaultDisplay().getMetrics(metrics);
             windowPixelWidth = metrics.widthPixels;
             windowPixelHeight = metrics.heightPixels;
             windowDesity = metrics.density;
+            Log.e(TAG, "Showing dialpog");
+            try {
+                socket = SocketUtil.getSocket();
+                out = new ObjectOutputStream(socket.getOutputStream());
+                out.flush();
+                in = new ObjectInputStream(socket.getInputStream());
+                Log.e(TAG, "Writing to stream");
+                write(out);
+                //Log.e(TAG, "Written on stream");
+                SocketUtil.setInput(in);
+                SocketUtil.setOutput(out);
+                Log.e(TAG, "Written on output stream");
+            }catch(Exception e){
+                Log.e(TAG, e.getMessage());
+            }
+            dialog.show();
         }
 
         @Override
         protected Void doInBackground(Void... params) {
-            ObjectInputStream in = null;
-            ObjectOutputStream out = null;
 
             try {
-                in = new ObjectInputStream(socket.getInputStream());
-                out = new ObjectOutputStream(socket.getOutputStream());
+                read(in);
+                Log.e(TAG, "windowPixelHeight= " + windowPixelHeight + " window density = " + windowDesity);
+                Log.e(TAG, "windowPixelHWidth= " + windowPixelWidth );
 
-                if(mPlayerHosting) { read(in); write(out); }
-                else { write(out); read(in); }
+                Log.e(TAG, "Oppo device height = " + oppHeight + " windoe density = " + oppDensity);
+                Log.e(TAG, "Oppo device Width= " + oppWidth );
 
-                gameHeight = (int) Math.min(windowPixelHeight / windowDesity, height / density);
-                gameWidth = (int) Math.min(windowPixelWidth / windowDesity, width / density);
+                mGameHeight = (int) Math.min(windowPixelHeight , oppHeight );
+                mGameWidth = (int) Math.min(windowPixelWidth , oppWidth );
 
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
             } catch (ClassNotFoundException e) {
                 Log.e(TAG, e.getMessage());
-            } finally {
-                if(in != null){
-                    try { in.close(); }
-                    catch (IOException e) { Log.e(TAG,e.getMessage()); }
-                }
-                if(out != null){
-                    try { out.close(); }
-                    catch (IOException e) { Log.e(TAG,e.getMessage()); }
-                }
             }
 
             return null;
@@ -162,31 +187,38 @@ public class PongActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
+            Log.e(TAG, "OnPostExecute called");
             dialog.dismiss();
-            table.setmTableHeight(gameHeight);
-            table.setmTableWidth(gameWidth);
+            Log.e(TAG, "GameHeight = " + mGameHeight);
+            table.setmTableHeight(mGameHeight);
+            table.setmTableWidth(mGameWidth);
+           // table.rescaleTableEntities();
+            mGameThread.setStreams(out,in);
+            mGameThread.setState(GameThread.STATE_READY);
         }
 
         private void read(ObjectInputStream in) throws IOException, ClassNotFoundException {
             Object objWidth = in.readObject();
+            Log.e(TAG, "Reading object");
             if(objWidth instanceof Integer){
-                width = (Integer)objWidth;
+                oppWidth = (Integer)objWidth;
             }
             Object objHeight = in.readObject();
             if(objHeight instanceof Integer){
-                height = (Integer) objHeight;
+                oppHeight = (Integer) objHeight;
             }
             Object objDensity = in.readObject();
             if(objDensity instanceof Float){
-                density = (Float) objDensity;
+                oppDensity = (Float) objDensity;
             }
         }
 
         private void write(ObjectOutputStream out) throws IOException{
             out.writeObject(new Integer(windowPixelWidth));
-            out.flush();
+            //out.flush();
+            Log.e(TAG, "Writing pixel height");
             out.writeObject(new Integer(windowPixelHeight));
-            out.flush();
+            //out.flush();
             out.writeObject(new Float(windowDesity));
             out.flush();
         }
