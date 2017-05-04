@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothSocket;
 
 /**
  * Created by Home on 4/28/17.
+ * Callback listener to Bluetooth Connection
  */
 
 public interface OnConnectionOverBluetoothListener {

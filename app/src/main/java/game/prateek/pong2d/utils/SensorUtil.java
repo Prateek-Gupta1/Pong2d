@@ -11,6 +11,7 @@ import game.prateek.pong2d.view.PongTable;
 
 /**
  * Created by Prateek Gupta on 4/18/17.
+ *
  */
 
 public class SensorUtil implements SensorEventListener {
@@ -73,6 +74,9 @@ public class SensorUtil implements SensorEventListener {
             mSensorManager.unregisterListener(this);
     }
 
+    /**
+     * Callback listener to listen to changes in sensor's value when the device is rotated.
+     */
     public interface OnDeviceRotatedListener{
          void onDeviceRotated(float dy);
     }

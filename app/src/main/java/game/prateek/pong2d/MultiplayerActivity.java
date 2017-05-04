@@ -1,3 +1,11 @@
+/**
+ * The activity presents users with the choices of Hosting a Game or connecting to one.
+ * In either case users are asked to turn ON the Bluetooth first, failing to do so exits the activity.
+ * The Host device first makes the device discoverable and starts a service to accept any incoming connection.
+ * The client device scans for nearby devices and the user is presented with  available devices. When the user selects
+ * a device, an attempt is made to establish the connection. Once the connection is set, pong activity starts.
+ * On host side, once it accepts an incoming connection it starts the pong activity.
+ */
 package game.prateek.pong2d;
 
 import android.Manifest;
@@ -40,6 +48,7 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
 
     private static final int REQUEST_ENABLE_BT = 0;
     private static final int ENSURE_ENABLE_DISCOVERABLE = 1;
+    //Unique bluetooth ID
     public static final UUID APP_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
 
 
@@ -48,6 +57,8 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_multiplayer);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        //If bluetooth is not supported by the device, then exit the activity
         if(mBluetoothAdapter == null){
             Toast.makeText(this, "Bluetooth not supported in your device", Toast.LENGTH_LONG).show();
             finish();
@@ -58,22 +69,30 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
                 @Override
                 public void onCheckedChanged(RadioGroup group, @IdRes int checkedId) {
                     switch (checkedId) {
+                        //If user wants to be client.
                         case R.id.rbConnect:
+                            //If device is already scanning, then cancel it.
                             if(mBluetoothAdapter.isDiscovering()){
                                 mBluetoothAdapter.cancelDiscovery();
                             }
+                            //workaround for device API fragmentation
                             int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
                             ActivityCompat.requestPermissions(MultiplayerActivity.this,
                                     new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                                     MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+                            //Start scanning nearby devices
                             mBluetoothAdapter.startDiscovery();
+                            //Register broadcast receiver to receive info about nearby device
                             IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                             registerReceiver(mDeviceListReceiver, filter);
                             filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
                             registerReceiver(mDeviceListReceiver, filter);
+                            //Shows a dialog with list of available devices
                             showNearbyDevicesToPair();
                             break;
+                        //If user wants to be host
                         case R.id.rbHost:
+                            //Make sure device is discoverable for 300 seconds
                             ensureDiscoverable();
                             break;
                     }
@@ -87,8 +106,6 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
         if(!mBluetoothAdapter.isEnabled()){
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        }else{
-            //Todo- if necessary write code
         }
     }
 
@@ -112,11 +129,13 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
                     Toast.makeText(this, "Bluetooth must be made discoverable", Toast.LENGTH_LONG).show();
                     finish();
                 }else{
+                    //If user agrees to make device discoverable then start accept connection service
                     mDialog = new ProgressDialog(this);
                     mDialog.setTitle("Waiting for someone to join");
                     mDialog.setCancelable(false);
                     mAcceptConnService = new AcceptConnectionService("Pong2d",this);
                     mAcceptConnService.start();
+                    //Show a dialog till a connection is accepted.
                     mDialog.show();
                 }
                 break;
@@ -133,6 +152,10 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
 
     private ArrayAdapter<String> mDeviceListAdapter;
 
+    /**
+     * This receiver receives a device info from Bluetooth discovery intent result and populate
+     * it in the dialog. If no device is available then it shows the message.
+     */
     private BroadcastReceiver mDeviceListReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -156,6 +179,7 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
         AlertDialog.Builder devicesDialog =  new AlertDialog.Builder(this);
         devicesDialog.setTitle("Nearby Devices");
         mDeviceListAdapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_singlechoice);
+        //If user cancels the discovery then, the dialog is dismissed.
         devicesDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -165,6 +189,8 @@ public class MultiplayerActivity extends AppCompatActivity implements OnConnecti
                 MultiplayerActivity.this.unregisterReceiver(mDeviceListReceiver);
             }
         });
+        //When user selects a device, the device info is extracted and a Bluetooth device object is created with that info
+        //After getting the device, it is passed to connect service, which tries to establish a connection with the device.
         devicesDialog.setAdapter(mDeviceListAdapter, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {

@@ -1,3 +1,7 @@
+/**
+ * Gives user a choice to either Drag the racket or maneuver it using sensors.
+ * The choice is stored in SharedPreference
+ */
 package game.prateek.pong2d;
 
 import android.content.Context;

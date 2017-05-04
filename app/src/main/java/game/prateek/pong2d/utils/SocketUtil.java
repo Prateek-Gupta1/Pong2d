@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 
 /**
  * Created by Prateek Gupta on 4/28/17.
+ * Global class available to the App. It allows access to socket and streams in Multiplayer mode.
  */
 
 public class SocketUtil {
@@ -27,8 +28,8 @@ public class SocketUtil {
     public static void closeSocket(){
         if(socket != null){
             try {
-                input.close();
-                output.close();
+                if(input != null) input.close();
+                if(output != null) output.close();
                 socket.close();
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());

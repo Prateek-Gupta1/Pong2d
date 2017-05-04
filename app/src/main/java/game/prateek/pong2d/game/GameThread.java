@@ -24,46 +24,60 @@ import game.prateek.pong2d.view.PongTable;
 
 /**
  * Created by Prateek Gupta on 4/8/17.
+ * This is the heart of the Game. It creates and maintains the Game Loop, updates the state of the objects on the table,
+ * manages the state of the Game and handles communicate the states between two players,
+ * if user selects multiplayer option, via bluetooth's input output streams.
+ *
  */
 
 public class GameThread extends Thread {
 
+    private static final String TAG = GameThread.class.getSimpleName();
+
+    //Game states
     public static final int STATE_READY = 0;
     public static final int STATE_PAUSED = 1;
     public static final int STATE_RUNNING = 2;
     public static final int STATE_WIN = 3;
     public static final int STATE_LOSE = 4;
-    private static final String TAG = GameThread.class.getSimpleName();
+
+    //Keys to store the state of the game in savedInstanceState object
     private static final String KEY_PLAYER_DATA = "Player";
     private static final String KEY_OPPONENT_DATA = "Opponent";
     private static final String KEY_BALL_DATA = "Ball";
     private static final String KEY_GAME_STATE = "GameState";
 
+    //Check if user has selected sensors to guide the racket
     private boolean mSensorsOn;
 
+    //Game view objects
     private final Context mCtx;
     private final SurfaceHolder mSurfaceHolder;
     private final PongTable mPongTable;
     private final Handler mGameStatusHandler;
     private final Handler mScoreHandler;
-    private final SensorUtil mSensorListener;
+    private final SensorUtil mSensorListener; // Sensor listener that reacts to change in x,y,z values of the device.
 
+    //Bluetooth streams
     private ObjectInputStream bleInStream;
     private ObjectOutputStream bleOutStream;
 
+    //Game progress and state
     private boolean mRun = false;
     private int mGameState;
     private Object mRunLock;
 
+    //Frames per second
     private static final int PHYS_FPS = 60;
 
+    //Game modes
     public static final int GAME_MODE_SINGLE = 100;
     public static final int GAME_MODE_MULTIPLAYER = 101;
     private int mGameMode;
 
-    public GameThread(Context ctx, SurfaceHolder holder, PongTable pongTable, Handler statushandler, Handler scoreHandler) {
-        Log.e(TAG, "GameThread Constructor called");
 
+    public GameThread(Context ctx, SurfaceHolder holder, PongTable pongTable, Handler statushandler, Handler scoreHandler) {
+        //Log.e(TAG, "GameThread Constructor called");
         this.mCtx = ctx;
         this.mSurfaceHolder = holder;
         this.mPongTable = pongTable;
@@ -77,44 +91,55 @@ public class GameThread extends Thread {
     public void run() {
         Log.e(TAG, "run method called");
 
+        // get current time since last bootup
         long mNextGameTick = SystemClock.uptimeMillis();
+        //Number of frames
         int skipTicks = 1000 / PHYS_FPS;
         while (mRun) {
             Canvas c = null;
             try {
-                c = mSurfaceHolder.lockCanvas(null);
+                c = mSurfaceHolder.lockCanvas(null); // get hold of canvas object from view
                 if (c != null) {
-                    synchronized (mSurfaceHolder) {
-                        if (mGameState == STATE_RUNNING) {
+                    synchronized (mSurfaceHolder) { // lock the state of game
+                        if (mGameState == STATE_RUNNING) { // If game is running, start updating the state of objects, else do nothing
                             if (mGameMode == GAME_MODE_MULTIPLAYER) {
+
+                                // If player is hosting in multiplayer mode, read-from and write-to stream
+                                // and update the state of object
                                 if (mPongTable.ismPlayerHosting()) {
                                     writeToOpponent();
                                     readFromOpponent();
                                     mPongTable.update(c);
                                 } else {
-                                    readFromOpponent();
+                                    //If player is not hosting, then get the state of both the players as evaluated by
+                                    // host device and update it in the client device
                                     writeToOpponent();
+                                    readFromOpponent();
                                 }
                             }else{
+                                //If game mode is Single Player
                                 mPongTable.update(c);
                             }
                         }
-                        synchronized (mRunLock) {
+                        synchronized (mRunLock) { // If the game is Not paused
                             if (mRun) {
-                                mPongTable.draw(c);
+                                mPongTable.draw(c); // draw the objects on canvas
                             }
                         }
                     }
                 }
             } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+                Log.e(TAG, e.getMessage());
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e(TAG, e.getMessage());
             } finally {
                 if (c != null) {
+                    //Release lock from canvas so that surface can draw
                     mSurfaceHolder.unlockCanvasAndPost(c);
                 }
             }
+
+            //Draw each frame after an interval of frame rate
             mNextGameTick += skipTicks;
             long sleepTime = mNextGameTick - SystemClock.uptimeMillis();
             if (sleepTime > 0) {
@@ -126,6 +151,7 @@ public class GameThread extends Thread {
             }
         }
     }
+
 
     public void setUpNewRound() {
         synchronized (mSurfaceHolder){
@@ -140,6 +166,10 @@ public class GameThread extends Thread {
         }
     }
 
+    /**
+     * Saves the state of the game in the savedInstanceState object in the activity.
+     * @param map
+     */
     public void saveState(Bundle map) {
         synchronized (mSurfaceHolder) {
             map.putFloatArray(KEY_PLAYER_DATA,
@@ -192,9 +222,13 @@ public class GameThread extends Thread {
         }
     }
 
-    public void setState(int mode) {
+    /**
+     * Takes the state of the game and selects the appropriate action that should be taken.
+     * @param state
+     */
+    public void setState(int state) {
         synchronized (mSurfaceHolder) {
-            mGameState = mode;
+            mGameState = state;
             Resources res = mCtx.getResources();
             switch (mGameState) {
                 case STATE_READY:
@@ -220,6 +254,9 @@ public class GameThread extends Thread {
         }
     }
 
+    /**
+     * set state of the game to PAUSED and unregisters the sensor listener.
+     */
     public void pauseGame() {
         synchronized (mSurfaceHolder) {
             if (mGameState == STATE_RUNNING) {
@@ -229,6 +266,10 @@ public class GameThread extends Thread {
         }
     }
 
+    /**
+     * Set the state to RUNNING so that the thread could draw the objects.
+     * Registers for sensor listener if sensors are turned ON.
+     */
     public void resumeGame() {
         synchronized (mSurfaceHolder) {
             setState(STATE_RUNNING);
@@ -246,6 +287,10 @@ public class GameThread extends Thread {
         }
     }
 
+    /**
+     * Checks if the Game is either Paused or Ready
+     * @return
+     */
     public boolean isBetweenRounds() {
         return mGameState != STATE_RUNNING;
     }
@@ -299,6 +344,15 @@ public class GameThread extends Thread {
         return mGameMode;
     }
 
+    /**
+     * Helper function that reads the Game State from the Input stream of the bluetooth connection.
+     * If the device is Hosting the game then it only reads data related to opponent's vertical movement
+     * and update the UI accordingly.
+     * If the device is client, then it reads all necessary object data and updates the object state according to data
+     * send by Host device.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private synchronized void readFromOpponent() throws IOException, ClassNotFoundException {
         Object obj = bleInStream.readObject();
         if(obj instanceof GameStateObject){
@@ -318,11 +372,17 @@ public class GameThread extends Thread {
                 mPongTable.getOpponent().score = gameState.playerScore;
             }
         }
-        Log.e(TAG, "Tablewidth = " + mPongTable.getmTableWidth());
+        /*Log.e(TAG, "Tablewidth = " + mPongTable.getmTableWidth());
         Log.e(TAG, "TableHeight = " + mPongTable.getmTableHeight());
         Log.e(TAG, " Read Player = " + mPongTable.getPlayer().toString());
-        Log.e(TAG, " REad Opponent = " + mPongTable.getOpponent().toString());
+        Log.e(TAG, " REad Opponent = " + mPongTable.getOpponent().toString());*/
     }
+
+    /**
+     * Helper function that writes the Game state on the OutputStream of Bluetooth connection.
+     * All data is communicated regardless of device status.
+     * @throws IOException
+     */
     private synchronized void writeToOpponent() throws IOException {
         GameStateObject gameState = new GameStateObject();
         gameState.ballCx = mPongTable.getBall().cx;
@@ -332,11 +392,10 @@ public class GameThread extends Thread {
         gameState.playerRacquetTop = mPongTable.getPlayer().bounds.top;
         gameState.opponentScore = mPongTable.getOpponent().score;
         gameState.playerScore = mPongTable.getPlayer().score;
-        //gameState.gameState = mGameState;
         bleOutStream.writeObject(gameState);
-        Log.e(TAG, " Write Player = " + mPongTable.getPlayer().toString());
+       /* Log.e(TAG, " Write Player = " + mPongTable.getPlayer().toString());
         Log.e(TAG, " Write Opponent = " + mPongTable.getOpponent().toString());
-        Log.e(TAG, "Ball = " + mPongTable.getBall().toString());
+        Log.e(TAG, "Ball = " + mPongTable.getBall().toString());*/
     }
 
 }

@@ -14,6 +14,7 @@ import game.prateek.pong2d.MultiplayerActivity;
 
 /**
  * Created by Prateek Gupta on 4/28/17.
+ * A service that creates a server socket and listens to incoming bluetooth connection requests.
  */
 
 public class AcceptConnectionService extends Thread {
@@ -27,6 +28,7 @@ public class AcceptConnectionService extends Thread {
         setName(name);
         mListener = listener;
         try {
+            //Gets the server socket of the device's bluetooth port
             mServerSocket = BluetoothAdapter.getDefaultAdapter().listenUsingRfcommWithServiceRecord("Pong2d", MultiplayerActivity.APP_UUID);
         } catch (IOException e) {
             Log.e(TAG, e.getMessage());
@@ -40,18 +42,16 @@ public class AcceptConnectionService extends Thread {
 
         while(listening) {
             try {
-                Log.e(TAG, "socket accepting ");
+                //Listening to incoming connections
                 socket = mServerSocket.accept();
-                Log.e(TAG, "socket accepted");
                 if (socket != null) {
-                    Log.e(TAG, "socket not null");
+                    //If connection is accepted, then call a callback to ConnectionOverBluetooth listener.
                     mListener.connected(true, socket);
                 } else {
                     mListener.connectionFailed();
                     //break;
                 }
             } catch (IOException e) {
-                Log.e(TAG, "socket error");
                 Log.e(TAG, e.getMessage());
             }
         }

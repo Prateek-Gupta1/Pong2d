@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.content.ContextCompat;
@@ -39,8 +40,8 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
     private Player mPlayer;
     private Player mOpponent;
     private Ball mBall;
-    private Paint mNetPaint;
-    private Paint mTableBoundsPaint;
+    private Paint mNetPaint; // The middle line on the table
+    private Paint mTableBoundsPaint; // To draw Bounds of the table
     private int mTableWidth;
     private int mTableHeight;
     private Context mContext;
@@ -55,6 +56,11 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
 
     private float mAiMoveProbability;
 
+    /**
+     * Helper method to init the game elements
+     * @param ctx
+     * @param attr
+     */
     public void initPongTable(Context ctx, AttributeSet attr){
 
         Log.e(TAG, "InitPongTable called");
@@ -62,6 +68,7 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         mHolder = getHolder();
         mHolder.addCallback(this);
 
+        //initialize the Game Thread. Not started the thread yet.
         mGame = new GameThread(this.getContext(), mHolder, this,
                 new Handler(){
 
@@ -86,6 +93,7 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         );
         setFocusable(true);
 
+        //Get style attributes of custom surface view
         TypedArray a = ctx.obtainStyledAttributes(attr, R.styleable.PongTable);
         int racketHeight = a.getInteger(R.styleable.PongTable_racketHeight,340);
         int racketWidth =  a.getInteger(R.styleable.PongTable_racketWidth,100);
@@ -96,21 +104,25 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
 
         a.recycle();
 
+        //Set player
         Paint playerPaint = new Paint();
         playerPaint.setAntiAlias(true);
         playerPaint.setColor(ContextCompat.getColor(mContext,R.color.player_color));
         mPlayer = new Player(racketWidth, racketHeight, playerPaint);
 
+        //Set Opponent
         Paint oppPaint = new Paint();
         oppPaint.setAntiAlias(true);
         oppPaint.setColor(ContextCompat.getColor(mContext,R.color.opponent_color));
         mOpponent = new Player(racketWidth, racketHeight, oppPaint);
 
+        //Set Ball
         Paint ballPaint = new Paint();
         ballPaint.setAntiAlias(true);
         ballPaint.setColor(Color.BLACK);
         mBall = new Ball(ballRadius, ballPaint);
 
+        //Draw middle line
         mNetPaint = new Paint();
         mNetPaint.setAntiAlias(true);
         mNetPaint.setColor(Color.BLACK);
@@ -119,14 +131,15 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         mNetPaint.setStrokeWidth(10.0f);
         mNetPaint.setPathEffect(new DashPathEffect(new float[]{5, 5}, 0));
 
+        //Draw bounds
         mTableBoundsPaint = new Paint();
         mTableBoundsPaint.setAntiAlias(true);
         mTableBoundsPaint.setColor(Color.BLACK);
         mTableBoundsPaint.setStyle(Paint.Style.STROKE);
         mTableBoundsPaint.setStrokeWidth(15.0f);
 
-        //mCanvasHeight = 1;
-        //mCanvasWidth = 1;
+        //Move probability of the AI, used in single player mode.
+        //mimics the case when human players forget to move the racket
         mAiMoveProbability = 0.8f;
     }
 
@@ -140,6 +153,10 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         initPongTable(context,attrs);
     }
 
+    /**
+     * called by game thread
+     * @param canvas
+     */
     @Override
     public void draw(Canvas canvas){
        // Log.e(TAG, "Draw called");
@@ -160,6 +177,10 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         mBall.draw(canvas);
     }
 
+    /**
+     * Checks for collisions and move the entities accordingly
+     * @param canvas
+     */
     public void update(Canvas canvas){
 
         if(checkCollisionPlayer(mPlayer,mBall)){
@@ -187,6 +208,9 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         //Log.e(TAG," Player left = " + mPlayer.bounds.left + " Player top = " +mPlayer.bounds.top + "Player height = " + mPlayer.getRacquetHeight() + " width = "+ mPlayer.getRacquetWidth());
     }
 
+    /**
+     * Moves the Opponent racket in Single Player mode
+     */
     private void doAI() {
         if (mOpponent.bounds.top > mBall.cy) {
             // move up
@@ -200,6 +224,13 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
                     mOpponent.bounds.top + PHY_RACQUET_SPEED);
         }
     }
+
+    /**
+     * Checks if the ball intersects the bounds of the PLayer
+     * @param player
+     * @param ball
+     * @return
+     */
     private boolean checkCollisionPlayer(Player player, Ball ball){
         return player.bounds.intersects(
                 ball.cx - ball.getRadius(),
@@ -220,6 +251,12 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         return mBall.cx + mBall.getRadius() >= mTableWidth - 1;
     }
 
+    /**
+     * Rebounds ball in the correct direction when it hits a Player.
+     * Also increases the speed of the ball
+     * @param player
+     * @param ball
+     */
     private void handleCollision(Player player, Ball ball){
         ball.velocity_x = -ball.velocity_x * 1.05f;
         if(player == mPlayer){
@@ -256,6 +293,7 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         Log.e(TAG, "surfaceChanged called");
+        //Set the width and height of the table to devices pixel width and height
         if(mGame.getGameMode() == GameThread.GAME_MODE_SINGLE) {
             mTableWidth = width;
             mTableHeight = height;
@@ -269,6 +307,7 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
     public void surfaceDestroyed(SurfaceHolder holder) {
         Log.e(TAG, "surfaceDestroyed called");
 
+        //Tries to connect the Game Thread again in case the surface get demolished.
         boolean retry = true;
         mGame.setRunning(false);
         while (retry) {
@@ -291,11 +330,14 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         if(!mGame.SensorsOn()) {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
+                    //Start game when touch down happens and game is not running
                     if (mGame.isBetweenRounds()) {
                         mGame.setState(GameThread.STATE_RUNNING);
                     } else {
+                        //Check if the touch is within the bounds of racket
                         if (isTouchOnRacket(event, mPlayer)) {
                             moving = true;
+                            //Store the touch position
                             mlastTouchY = event.getY();
                         }
                     }
@@ -303,8 +345,11 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
                 case MotionEvent.ACTION_MOVE:
                     if (moving) {
                         float y = event.getY();
+                        //Get the difference b/w present position and last touch
                         float dy = y - mlastTouchY;
+                        //Set the current touch position to last touch
                         mlastTouchY = y;
+                        //Move player racket upto the difference in touch distances
                         movePlayerRacquet(dy, mPlayer);
                     }
                     break;
@@ -312,6 +357,7 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
                     moving = false;
                     break;
             }
+            //If sensors are ON then no need to monitor touch, just start game on first touch
         }else{
             if(event.getAction() == MotionEvent.ACTION_DOWN){
                 if (mGame.isBetweenRounds()) {
@@ -323,6 +369,11 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         return true;
     }
 
+    /**
+     * Moves players left and top bounds, keeping constant Height and width.
+     * @param dy
+     * @param player
+     */
     public void movePlayerRacquet(float dy, Player player) {
         synchronized (mHolder) {
             movePlayer(player,
@@ -363,11 +414,17 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
         return mGame;
     }
 
+    /**
+     * Places the players on the Table. Opponent on right and Player on left.
+     */
     private void placePlayers(){
         mPlayer.bounds.offsetTo(2,(mTableHeight - mPlayer.getRacquetHeight())/2);
         mOpponent.bounds.offsetTo(mTableWidth - mOpponent.getRacquetWidth()-2, (mTableHeight - mOpponent.getRacquetHeight())/2);
     }
 
+    /**
+     * Places ball in the middle of the screen
+     */
     private void placeBall(){
         mBall.cx = mTableWidth/2;
         mBall.cy = mTableHeight/2;
@@ -392,6 +449,9 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
     public void setScoreOpponent(TextView view){ mScoreOpponent = view; }
     public void setStatusView( TextView view){ mStatus = view; }
 
+    /**
+     * scales the racket in Multiplayer mode
+     */
     public void rescaleTableEntities(){
         float scale = 25.0f;//ctx.getResources().getDisplayMetrics().density;
         int racketHeight = ((int)(scale * mTableHeight)/100);
@@ -401,11 +461,17 @@ public class PongTable extends SurfaceView implements SurfaceHolder.Callback, Se
 
         mPlayer.setRacquetHeight(racketHeight);
         mPlayer.setRacquetWidth(racketWidth);
+        mPlayer.bounds = new RectF(0,0,racketWidth, racketHeight);
         mOpponent.setRacquetWidth(racketWidth);
         mOpponent.setRacquetHeight(racketHeight);
+        mOpponent.bounds = new RectF(0,0,racketWidth, racketHeight);
         mBall.setRadius(ballRadius);
     }
 
+    /**
+     * callback for sensor changes.
+     * @param dy
+     */
     @Override
     public void onDeviceRotated(float dy) {
         float deltaY = dy*20;

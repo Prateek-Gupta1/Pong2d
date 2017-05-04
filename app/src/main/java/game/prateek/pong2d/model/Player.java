@@ -6,6 +6,8 @@ import android.graphics.RectF;
 
 /**
  * Created by Prateek Gupta on 4/8/17.
+ * This is the model class for Player object in the pong game.
+ * It encompasses all relevant properties of the Player Racket that defines its state in the game as well as the drawing aspects.
  */
 
 public class Player {
@@ -14,7 +16,7 @@ public class Player {
     private int racquetHeight;
     public int score;
     private Paint paint;
-    public RectF bounds;
+    public RectF bounds; // This object is useful in collision detections.
 
     public Player(int racquetWidth, int racquetHeight, Paint paint) {
         this.racquetWidth = racquetWidth;
@@ -48,6 +50,10 @@ public class Player {
         return paint;
     }
 
+    /**
+     * Helper function for debugging
+     * @return
+     */
     @Override
     public String toString() {
         return "Width = " + racquetWidth + " Height = " + racquetHeight + " score = " + score + " Top = " + bounds.top + " Left = " + bounds.left;

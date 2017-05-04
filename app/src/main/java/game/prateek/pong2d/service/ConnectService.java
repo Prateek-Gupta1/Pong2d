@@ -14,6 +14,7 @@ import game.prateek.pong2d.MultiplayerActivity;
 
 /**
  * Created by Home on 4/28/17.
+ * A service that tries to establish a socket connection to the given bluetooth device
  */
 
 public class ConnectService extends Thread {
@@ -27,6 +28,7 @@ public class ConnectService extends Thread {
         super(name);
         mDevice = device;
         try {
+            //Create a connection to the Bluetooth device
             mSocket = device.createRfcommSocketToServiceRecord(MultiplayerActivity.APP_UUID);
         } catch (IOException e) {
             Log.e(TAG, e.getMessage());
@@ -37,8 +39,9 @@ public class ConnectService extends Thread {
     public void run() {
 
         try {
+            //A bocking call. It will wait till the connection is established or it fails
             mSocket.connect();
-            Log.e(TAG, "Connected");
+            //Log.e(TAG, "Connected");
         } catch (IOException e) {
             Log.e(TAG, e.getMessage());
             try {

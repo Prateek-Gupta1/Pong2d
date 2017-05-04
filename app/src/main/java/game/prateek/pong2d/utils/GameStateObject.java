@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 /**
  * Created by Prateek Gupta on 4/29/17.
+ * As Serializable object that is used as a wrapper of game state to be channeled on to the streams.
  */
 
 public class GameStateObject implements Serializable {
